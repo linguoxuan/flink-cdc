@@ -31,7 +31,7 @@ CONNECTOR_NAME=""
 # Set CONNECTOR_NAME based on the third parameter
 case "$3" in
     "all")
-        CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mysql-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-postgres-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-oracle-cdc"
+        CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mysql-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-postgres-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-oracle-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mongodb-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-sqlserver-cdc"
         ;;
     "mysql"|"flink-sql-connector-mysql-cdc")
         CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mysql-cdc"
@@ -41,6 +41,15 @@ case "$3" in
         ;;
     "oracle"|"flink-sql-connector-oracle-cdc")
         CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-oracle-cdc"
+        ;;
+    "postgres"|"flink-sql-connector-postgres-cdc")
+        CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-postgres-cdc"
+        ;;
+    "mongodb"|"flink-sql-connector-mongodb-cdc")
+        CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mongodb-cdc"
+        ;;
+    "sqlserver"|"flink-sql-connector-sqlserver-cdc")
+        CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-sqlserver-cdc"
         ;;
     *)
         echo "Error: Unsupported connector name '$3'"
