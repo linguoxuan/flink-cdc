@@ -23,6 +23,7 @@ import org.apache.flink.cdc.connectors.base.options.StartupOptions;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 
 import static org.apache.flink.cdc.connectors.base.options.SourceOptions.CHUNK_META_GROUP_SIZE;
 import static org.apache.flink.cdc.connectors.base.utils.EnvironmentUtils.checkSupportCheckpointsAfterTasksFinished;
@@ -63,6 +64,7 @@ public class MongoDBSourceConfigFactory implements Factory<MongoDBSourceConfig> 
     protected boolean skipSnapshotBackfill = false;
     protected boolean scanNewlyAddedTableEnabled = false;
     protected boolean assignUnboundedChunkFirst = false;
+    private Properties dbzProperties;
 
     /** The protocol connected to MongoDB. For example mongodb or mongodb+srv. */
     public MongoDBSourceConfigFactory scheme(String scheme) {
@@ -280,6 +282,12 @@ public class MongoDBSourceConfigFactory implements Factory<MongoDBSourceConfig> 
         return this;
     }
 
+    /** The Debezium connector properties. For example, "skipped.operations". */
+    public MongoDBSourceConfigFactory dbzProperties(Properties dbzProperties) {
+        this.dbzProperties = dbzProperties;
+        return this;
+    }
+
     /** Creates a new {@link MongoDBSourceConfig} for the given subtask {@code subtaskId}. */
     @Override
     public MongoDBSourceConfig create(int subtaskId) {
@@ -306,6 +314,7 @@ public class MongoDBSourceConfigFactory implements Factory<MongoDBSourceConfig> 
                 disableCursorTimeout,
                 skipSnapshotBackfill,
                 scanNewlyAddedTableEnabled,
-                assignUnboundedChunkFirst);
+                assignUnboundedChunkFirst,
+                dbzProperties);
     }
 }

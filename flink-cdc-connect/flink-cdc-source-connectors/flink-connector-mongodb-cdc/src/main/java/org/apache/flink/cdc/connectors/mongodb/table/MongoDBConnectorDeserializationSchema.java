@@ -71,6 +71,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -94,6 +95,11 @@ public class MongoDBConnectorDeserializationSchema
     /** Local Time zone. */
     private final ZoneId localTimeZone;
 
+    /** Whether to filter duplicate -U +U records. */
+    private final boolean filterDuplicateRecords;
+
+    private final HashSet<String> watchFieldNames;
+
     /**
      * Runtime converter that converts {@link
      * com.mongodb.client.model.changestream.ChangeStreamDocument}s into {@link RowData} consisted
@@ -113,12 +119,27 @@ public class MongoDBConnectorDeserializationSchema
             RowType physicalDataType,
             MetadataConverter[] metadataConverters,
             TypeInformation<RowData> resultTypeInfo,
-            ZoneId localTimeZone) {
+            ZoneId localTimeZone,
+            boolean filterDuplicateRecords) {
         this.hasMetadata = checkNotNull(metadataConverters).length > 0;
         this.appendMetadataCollector = new AppendMetadataCollector(metadataConverters);
         this.physicalConverter = createConverter(physicalDataType);
         this.resultTypeInfo = resultTypeInfo;
         this.localTimeZone = localTimeZone;
+        this.filterDuplicateRecords = filterDuplicateRecords;
+        if (filterDuplicateRecords) {
+            watchFieldNames = new HashSet<>(physicalDataType.getFieldNames());
+        } else {
+            watchFieldNames = null;
+        }
+    }
+
+    public MongoDBConnectorDeserializationSchema(
+            RowType physicalDataType,
+            MetadataConverter[] metadataConverters,
+            TypeInformation<RowData> resultTypeInfo,
+            ZoneId localTimeZone) {
+        this(physicalDataType, metadataConverters, resultTypeInfo, localTimeZone, false);
     }
 
     @Override
@@ -149,6 +170,9 @@ public class MongoDBConnectorDeserializationSchema
                 // before the lookup operation happens. Ignored it.
                 if (fullDocument == null) {
                     break;
+                }
+                if (filterDuplicateRecords && needToFilterDuplicateRecords(value, valueSchema)) {
+                    return;
                 }
                 GenericRowData updateAfter = extractRowData(fullDocument);
                 updateAfter.setRowKind(RowKind.UPDATE_AFTER);
@@ -182,6 +206,43 @@ public class MongoDBConnectorDeserializationSchema
             }
         }
         return null;
+    }
+
+    private boolean needToFilterDuplicateRecords(Struct value, Schema valueSchema) {
+        // If updateDescription field is not present in schema or is null,
+        // we cannot determine whether the update affects watched fields,
+        // so conservatively return false (do not filter) to avoid dropping legitimate records.
+        if (valueSchema.field(MongoDBEnvelope.UPDATE_DESCRIPTION_FIELD) == null) {
+            return false;
+        }
+
+        Struct updateDescriptionStruct = value.getStruct(MongoDBEnvelope.UPDATE_DESCRIPTION_FIELD);
+        if (updateDescriptionStruct == null) {
+            return false;
+        }
+
+        String updatedFieldsString =
+                updateDescriptionStruct.getString(MongoDBEnvelope.UPDATED_FIELDS);
+        if (updatedFieldsString != null) {
+            BsonDocument updatedFieldsDocument = BsonDocument.parse(updatedFieldsString);
+            for (String fieldName : updatedFieldsDocument.keySet()) {
+                if (watchFieldNames.contains(fieldName)) {
+                    return false;
+                }
+            }
+        }
+
+        List<?> removedFieldsList =
+                updateDescriptionStruct.getArray(MongoDBEnvelope.REMOVED_FIELDS);
+        if (removedFieldsList != null) {
+            for (Object fieldName : removedFieldsList) {
+                if (watchFieldNames.contains(fieldName.toString())) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     @Override

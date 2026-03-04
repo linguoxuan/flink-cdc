@@ -90,6 +90,7 @@ public class MongoDBSource {
         private String initialSnapshottingPipeline;
         private Integer heartbeatIntervalMillis = HEARTBEAT_INTERVAL_MILLIS.defaultValue();
         private DebeziumDeserializationSchema<T> deserializer;
+        private Properties dbzProperties;
 
         /** The protocol connected to MongoDB. For example mongodb or mongodb+srv. */
         public Builder<T> scheme(String scheme) {
@@ -329,6 +330,12 @@ public class MongoDBSource {
             return this;
         }
 
+        /** The Debezium connector properties. For example, "skipped.operations". */
+        public Builder<T> debeziumProperties(Properties properties) {
+            this.dbzProperties = properties;
+            return this;
+        }
+
         /**
          * The deserializer used to convert from consumed {@link
          * org.apache.kafka.connect.source.SourceRecord}.
@@ -447,6 +454,10 @@ public class MongoDBSource {
                 props.setProperty(
                         MongoSourceConfig.HEARTBEAT_INTERVAL_MS_CONFIG,
                         String.valueOf(heartbeatIntervalMillis));
+            }
+
+            if (dbzProperties != null) {
+                props.putAll(dbzProperties);
             }
 
             props.setProperty(MongoSourceConfig.HEARTBEAT_TOPIC_NAME_CONFIG, HEARTBEAT_TOPIC_NAME);

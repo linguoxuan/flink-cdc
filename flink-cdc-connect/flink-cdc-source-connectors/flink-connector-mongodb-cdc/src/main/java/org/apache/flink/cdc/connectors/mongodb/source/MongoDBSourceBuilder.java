@@ -25,6 +25,7 @@ import org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceConfig
 import org.apache.flink.cdc.debezium.DebeziumDeserializationSchema;
 
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.stream.Stream;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
@@ -274,6 +275,12 @@ public class MongoDBSourceBuilder<T> {
      */
     public MongoDBSourceBuilder<T> assignUnboundedChunkFirst(boolean assignUnboundedChunkFirst) {
         this.configFactory.assignUnboundedChunkFirst(assignUnboundedChunkFirst);
+        return this;
+    }
+
+    /** The Debezium connector properties. For example, "skipped.operations". */
+    public MongoDBSourceBuilder<T> debeziumProperties(Properties properties) {
+        this.configFactory.dbzProperties(properties);
         return this;
     }
 

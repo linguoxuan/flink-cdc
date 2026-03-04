@@ -19,6 +19,7 @@ package org.apache.flink.cdc.connectors.mongodb.table;
 
 import org.apache.flink.cdc.connectors.base.options.StartupOptions;
 import org.apache.flink.cdc.connectors.base.utils.OptionUtils;
+import org.apache.flink.cdc.debezium.table.DebeziumOptions;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ReadableConfig;
@@ -45,6 +46,7 @@ import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourc
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.COLLECTION;
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.CONNECTION_OPTIONS;
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.DATABASE;
+import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.FILTER_DUPLICATE_PAIR_RECORDS;
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.FULL_DOCUMENT_PRE_POST_IMAGE;
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.HEARTBEAT_INTERVAL_MILLIS;
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.HOSTS;
@@ -60,6 +62,7 @@ import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourc
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.SCAN_NO_CURSOR_TIMEOUT;
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.SCHEME;
 import static org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.USERNAME;
+import static org.apache.flink.cdc.debezium.table.DebeziumOptions.getDebeziumProperties;
 import static org.apache.flink.cdc.debezium.utils.ResolvedSchemaUtils.getPhysicalSchema;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -75,7 +78,7 @@ public class MongoDBTableSourceFactory implements DynamicTableSourceFactory {
     public DynamicTableSource createDynamicTableSource(Context context) {
         final FactoryUtil.TableFactoryHelper helper =
                 FactoryUtil.createTableFactoryHelper(this, context);
-        helper.validate();
+        helper.validateExcept(DebeziumOptions.DEBEZIUM_OPTIONS_PREFIX);
 
         final ReadableConfig config = helper.getOptions();
 
@@ -135,6 +138,8 @@ public class MongoDBTableSourceFactory implements DynamicTableSourceFactory {
         int splitMetaGroupSize = config.get(CHUNK_META_GROUP_SIZE);
         int samplesPerChunk = config.get(SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SAMPLES);
 
+        final boolean filterDuplicateRecords = config.get(FILTER_DUPLICATE_PAIR_RECORDS);
+
         boolean enableFullDocumentPrePostImage =
                 config.getOptional(FULL_DOCUMENT_PRE_POST_IMAGE).orElse(false);
 
@@ -173,7 +178,9 @@ public class MongoDBTableSourceFactory implements DynamicTableSourceFactory {
                 noCursorTimeout,
                 skipSnapshotBackfill,
                 scanNewlyAddedTableEnabled,
-                assignUnboundedChunkFirst);
+                assignUnboundedChunkFirst,
+                getDebeziumProperties(context.getCatalogTable().getOptions()),
+                filterDuplicateRecords);
     }
 
     private void checkPrimaryKey(UniqueConstraint pk, String message) {
@@ -258,6 +265,7 @@ public class MongoDBTableSourceFactory implements DynamicTableSourceFactory {
         options.add(SCAN_INCREMENTAL_SNAPSHOT_BACKFILL_SKIP);
         options.add(SCAN_NEWLY_ADDED_TABLE_ENABLED);
         options.add(SCAN_INCREMENTAL_SNAPSHOT_UNBOUNDED_CHUNK_FIRST_ENABLED);
+        options.add(FILTER_DUPLICATE_PAIR_RECORDS);
         return options;
     }
 }

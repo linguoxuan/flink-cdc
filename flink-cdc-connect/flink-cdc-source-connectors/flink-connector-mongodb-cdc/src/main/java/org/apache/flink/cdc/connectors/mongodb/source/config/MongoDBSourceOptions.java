@@ -142,6 +142,12 @@ public class MongoDBSourceOptions {
                                     + "have been published in the specified interval. This improves the resumability of the connector "
                                     + "for low volume namespaces. Use 0 to disable. Defaults to 0.");
 
+    public static final ConfigOption<Boolean> FILTER_DUPLICATE_PAIR_RECORDS =
+            ConfigOptions.key("filter-duplicate-pair-records")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription("Whether to filter -U +U record pairs with the same value.");
+
     @Experimental
     public static final ConfigOption<Boolean> SCAN_INCREMENTAL_SNAPSHOT_ENABLED =
             ConfigOptions.key("scan.incremental.snapshot.enabled")

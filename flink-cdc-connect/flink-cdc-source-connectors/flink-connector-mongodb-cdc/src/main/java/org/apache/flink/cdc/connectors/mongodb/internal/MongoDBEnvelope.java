@@ -17,8 +17,10 @@
 
 package org.apache.flink.cdc.connectors.mongodb.internal;
 
+import com.mongodb.client.model.changestream.OperationType;
 import com.mongodb.kafka.connect.source.json.formatter.DefaultJson;
 import com.mongodb.kafka.connect.source.schema.AvroSchema;
+import io.debezium.data.Envelope;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.bson.BsonDocument;
@@ -31,8 +33,17 @@ import org.bson.json.JsonWriterSettings;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.mongodb.kafka.connect.source.schema.AvroSchemaDefaults.DEFAULT_AVRO_KEY_SCHEMA;
+import static io.debezium.config.CommonConnectorConfig.SKIPPED_OPERATIONS;
 
 /**
  * An immutable descriptor for the structure of {@link
@@ -65,6 +76,12 @@ public class MongoDBEnvelope {
     public static final String FULL_DOCUMENT_BEFORE_CHANGE_FIELD = "fullDocumentBeforeChange";
 
     public static final String DOCUMENT_KEY_FIELD = "documentKey";
+
+    public static final String UPDATE_DESCRIPTION_FIELD = "updateDescription";
+
+    public static final String UPDATED_FIELDS = "updatedFields";
+
+    public static final String REMOVED_FIELDS = "removedFields";
 
     public static final String OPERATION_TYPE_FIELD = "operationType";
 
@@ -145,6 +162,36 @@ public class MongoDBEnvelope {
     public static final BsonValue BSON_MIN_KEY = new BsonMinKey();
 
     public static final BsonValue BSON_MAX_KEY = new BsonMaxKey();
+
+    /** Shared mapping from Debezium operation codes to MongoDB OperationType. */
+    public static final Map<String, OperationType> OPERATION_TYPE_MAP;
+
+    static {
+        Map<String, OperationType> map = new HashMap<>();
+        map.put(Envelope.Operation.CREATE.code(), OperationType.INSERT);
+        map.put(Envelope.Operation.UPDATE.code(), OperationType.UPDATE);
+        map.put(Envelope.Operation.DELETE.code(), OperationType.DELETE);
+        OPERATION_TYPE_MAP = Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Parse skipped operations from the given properties map.
+     *
+     * @param props the properties containing the skipped operations config
+     * @return a set of OperationType that should be skipped
+     */
+    public static Set<OperationType> getSkippedOperations(Map<String, String> props) {
+        if (!props.containsKey(SKIPPED_OPERATIONS.name())) {
+            return new HashSet<>();
+        }
+
+        return Arrays.stream(props.get(SKIPPED_OPERATIONS.name()).split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .map(OPERATION_TYPE_MAP::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
 
     public static String encodeValue(String value) {
         try {

@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -89,6 +90,8 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
     private final boolean skipSnapshotBackfill;
     private final boolean scanNewlyAddedTableEnabled;
     private final boolean assignUnboundedChunkFirst;
+    @Nullable private final Properties dbzProperties;
+    private final boolean filterDuplicateRecords;
 
     // --------------------------------------------------------------------------------------------
     // Mutable attributes
@@ -128,6 +131,68 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
             boolean skipSnapshotBackfill,
             boolean scanNewlyAddedTableEnabled,
             boolean assignUnboundedChunkFirst) {
+        this(
+                physicalSchema,
+                scheme,
+                hosts,
+                username,
+                password,
+                database,
+                collection,
+                connectionOptions,
+                startupOptions,
+                initialSnapshottingQueueSize,
+                initialSnapshottingMaxThreads,
+                initialSnapshottingPipeline,
+                batchSize,
+                pollMaxBatchSize,
+                pollAwaitTimeMillis,
+                heartbeatIntervalMillis,
+                localTimeZone,
+                enableParallelRead,
+                splitMetaGroupSize,
+                splitSizeMB,
+                samplesPerChunk,
+                closeIdlerReaders,
+                enableFullDocPrePostImage,
+                noCursorTimeout,
+                skipSnapshotBackfill,
+                scanNewlyAddedTableEnabled,
+                assignUnboundedChunkFirst,
+                new Properties(),
+                false);
+    }
+
+    public MongoDBTableSource(
+            ResolvedSchema physicalSchema,
+            String scheme,
+            String hosts,
+            @Nullable String username,
+            @Nullable String password,
+            @Nullable String database,
+            @Nullable String collection,
+            @Nullable String connectionOptions,
+            StartupOptions startupOptions,
+            @Nullable Integer initialSnapshottingQueueSize,
+            @Nullable Integer initialSnapshottingMaxThreads,
+            @Nullable String initialSnapshottingPipeline,
+            @Nullable Integer batchSize,
+            @Nullable Integer pollMaxBatchSize,
+            @Nullable Integer pollAwaitTimeMillis,
+            @Nullable Integer heartbeatIntervalMillis,
+            ZoneId localTimeZone,
+            boolean enableParallelRead,
+            @Nullable Integer splitMetaGroupSize,
+            @Nullable Integer splitSizeMB,
+            @Nullable Integer samplesPerChunk,
+            boolean closeIdlerReaders,
+            boolean enableFullDocPrePostImage,
+            boolean noCursorTimeout,
+            boolean skipSnapshotBackfill,
+            boolean scanNewlyAddedTableEnabled,
+            boolean assignUnboundedChunkFirst,
+            @Nullable Properties dbzProperties,
+            boolean filterDuplicateRecords) {
         this.physicalSchema = physicalSchema;
         this.scheme = checkNotNull(scheme);
         this.hosts = checkNotNull(hosts);
@@ -157,6 +222,8 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
         this.skipSnapshotBackfill = skipSnapshotBackfill;
         this.scanNewlyAddedTableEnabled = scanNewlyAddedTableEnabled;
         this.assignUnboundedChunkFirst = assignUnboundedChunkFirst;
+        this.dbzProperties = dbzProperties;
+        this.filterDuplicateRecords = filterDuplicateRecords;
     }
 
     @Override
@@ -182,7 +249,11 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
                         ? new MongoDBConnectorFullChangelogDeserializationSchema(
                                 physicalDataType, metadataConverters, typeInfo, localTimeZone)
                         : new MongoDBConnectorDeserializationSchema(
-                                physicalDataType, metadataConverters, typeInfo, localTimeZone);
+                                physicalDataType,
+                                metadataConverters,
+                                typeInfo,
+                                localTimeZone,
+                                filterDuplicateRecords);
 
         String databaseList = null;
         String collectionList = null;
@@ -232,6 +303,7 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
             Optional.ofNullable(splitMetaGroupSize).ifPresent(builder::splitMetaGroupSize);
             Optional.ofNullable(splitSizeMB).ifPresent(builder::splitSizeMB);
             Optional.ofNullable(samplesPerChunk).ifPresent(builder::samplesPerChunk);
+            Optional.ofNullable(dbzProperties).ifPresent(builder::debeziumProperties);
             return SourceProvider.of(builder.build());
         } else {
             org.apache.flink.cdc.connectors.mongodb.MongoDBSource.Builder<RowData> builder =
@@ -258,6 +330,7 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
             Optional.ofNullable(pollAwaitTimeMillis).ifPresent(builder::pollAwaitTimeMillis);
             Optional.ofNullable(heartbeatIntervalMillis)
                     .ifPresent(builder::heartbeatIntervalMillis);
+            Optional.ofNullable(dbzProperties).ifPresent(builder::debeziumProperties);
 
             return SourceFunctionProvider.of(builder.build(), false);
         }
@@ -324,7 +397,9 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
                         noCursorTimeout,
                         skipSnapshotBackfill,
                         scanNewlyAddedTableEnabled,
-                        assignUnboundedChunkFirst);
+                        assignUnboundedChunkFirst,
+                        dbzProperties,
+                        filterDuplicateRecords);
         source.metadataKeys = metadataKeys;
         source.producedDataType = producedDataType;
         return source;
@@ -367,7 +442,9 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
                 && Objects.equals(noCursorTimeout, that.noCursorTimeout)
                 && Objects.equals(skipSnapshotBackfill, that.skipSnapshotBackfill)
                 && Objects.equals(scanNewlyAddedTableEnabled, that.scanNewlyAddedTableEnabled)
-                && Objects.equals(assignUnboundedChunkFirst, that.assignUnboundedChunkFirst);
+                && Objects.equals(assignUnboundedChunkFirst, that.assignUnboundedChunkFirst)
+                && Objects.equals(dbzProperties, that.dbzProperties)
+                && filterDuplicateRecords == that.filterDuplicateRecords;
     }
 
     @Override
@@ -401,7 +478,9 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
                 noCursorTimeout,
                 skipSnapshotBackfill,
                 scanNewlyAddedTableEnabled,
-                assignUnboundedChunkFirst);
+                assignUnboundedChunkFirst,
+                dbzProperties,
+                filterDuplicateRecords);
     }
 
     @Override

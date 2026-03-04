@@ -23,6 +23,7 @@ import com.mongodb.ConnectionString;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.model.changestream.OperationType;
 import com.mongodb.kafka.connect.source.MongoSourceConfig;
 import com.mongodb.kafka.connect.source.MongoSourceTask;
 import io.debezium.connector.SnapshotRecord;
@@ -34,15 +35,21 @@ import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -69,6 +76,8 @@ import static org.apache.flink.cdc.connectors.mongodb.source.utils.MongoRecordUt
  */
 public class MongoDBConnectorSourceTask extends SourceTask {
 
+    private static final Logger LOG = LoggerFactory.getLogger(MongoDBConnectorSourceTask.class);
+
     public static final String DATABASE_INCLUDE_LIST = "database.include.list";
 
     public static final String COLLECTION_INCLUDE_LIST = "collection.include.list";
@@ -91,6 +100,8 @@ public class MongoDBConnectorSourceTask extends SourceTask {
 
     private boolean isInSnapshotPhase = false;
 
+    private final Set<OperationType> skippedOperations = new HashSet<>();
+
     public MongoDBConnectorSourceTask() throws NoSuchFieldException {
         this.target = new MongoSourceTask();
         this.startedTaskField = MongoSourceTask.class.getDeclaredField("startedTask");
@@ -111,6 +122,14 @@ public class MongoDBConnectorSourceTask extends SourceTask {
     @Override
     public void start(Map<String, String> props) {
         initCapturedCollections(props);
+        skippedOperations.addAll(MongoDBEnvelope.getSkippedOperations(props));
+        if (!skippedOperations.isEmpty()) {
+            LOG.info(
+                    "MongoDB source task will skip operations: {}",
+                    skippedOperations.stream()
+                            .map(OperationType::getValue)
+                            .collect(Collectors.joining(",")));
+        }
         target.start(props);
         isInSnapshotPhase = isCopying();
     }
@@ -140,6 +159,9 @@ public class MongoDBConnectorSourceTask extends SourceTask {
             if (sourceRecords != null && !sourceRecords.isEmpty()) {
                 for (SourceRecord sourceRecord : sourceRecords) {
                     SourceRecord current = markRecordTimestamp(sourceRecord);
+                    if (current == null) {
+                        continue;
+                    }
 
                     if (isSnapshotRecord(current)) {
                         markSnapshotRecord(current);
@@ -178,7 +200,10 @@ public class MongoDBConnectorSourceTask extends SourceTask {
             // Step2. Change Streaming Phase
             if (sourceRecords != null && !sourceRecords.isEmpty()) {
                 for (SourceRecord current : sourceRecords) {
-                    outSourceRecords.add(markRecordTimestamp(current));
+                    SourceRecord processed = markRecordTimestamp(current);
+                    if (processed != null) {
+                        outSourceRecords.add(processed);
+                    }
                 }
             }
         }
@@ -190,6 +215,7 @@ public class MongoDBConnectorSourceTask extends SourceTask {
         target.stop();
     }
 
+    @Nullable
     private SourceRecord markRecordTimestamp(SourceRecord record) {
         if (isHeartbeatEvent(record)) {
             return markTimestampForHeartbeatRecord(record);
@@ -201,6 +227,16 @@ public class MongoDBConnectorSourceTask extends SourceTask {
         final Struct value = (Struct) record.value();
         // It indicates the time at which the reader processed the event.
         value.put(MongoDBEnvelope.TIMESTAMP_KEY_FIELD, System.currentTimeMillis());
+
+        // Check if this operation should be skipped
+        final OperationType operationType =
+                OperationType.fromString(value.getString(MongoDBEnvelope.OPERATION_TYPE_FIELD));
+        if (skippedOperations.contains(operationType)) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Skip {} data: Value={}", operationType.getValue(), value.toString());
+            }
+            return null;
+        }
 
         final Struct source = new Struct(value.schema().field(Envelope.FieldName.SOURCE).schema());
         // It indicates the time that the change was made in the database. If the record is read

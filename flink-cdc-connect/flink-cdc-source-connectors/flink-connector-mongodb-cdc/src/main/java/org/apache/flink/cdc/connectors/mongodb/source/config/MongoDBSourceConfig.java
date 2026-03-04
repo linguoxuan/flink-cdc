@@ -25,6 +25,7 @@ import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Properties;
 
 import static org.apache.flink.cdc.connectors.mongodb.source.utils.MongoUtils.buildConnectionString;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -56,6 +57,7 @@ public class MongoDBSourceConfig implements SourceConfig {
     private final boolean skipSnapshotBackfill;
     private final boolean isScanNewlyAddedTableEnabled;
     private final boolean assignUnboundedChunkFirst;
+    @Nullable private final Properties dbzProperties;
 
     MongoDBSourceConfig(
             String scheme,
@@ -79,7 +81,8 @@ public class MongoDBSourceConfig implements SourceConfig {
             boolean disableCursorTimeout,
             boolean skipSnapshotBackfill,
             boolean isScanNewlyAddedTableEnabled,
-            boolean assignUnboundedChunkFirst) {
+            boolean assignUnboundedChunkFirst,
+            @Nullable Properties dbzProperties) {
         this.scheme = checkNotNull(scheme);
         this.hosts = checkNotNull(hosts);
         this.username = username;
@@ -103,6 +106,7 @@ public class MongoDBSourceConfig implements SourceConfig {
         this.skipSnapshotBackfill = skipSnapshotBackfill;
         this.isScanNewlyAddedTableEnabled = isScanNewlyAddedTableEnabled;
         this.assignUnboundedChunkFirst = assignUnboundedChunkFirst;
+        this.dbzProperties = dbzProperties;
     }
 
     public String getScheme() {
@@ -207,6 +211,10 @@ public class MongoDBSourceConfig implements SourceConfig {
         return assignUnboundedChunkFirst;
     }
 
+    public Properties getDbzProperties() {
+        return dbzProperties;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -234,7 +242,8 @@ public class MongoDBSourceConfig implements SourceConfig {
                 && Objects.equals(collectionList, that.collectionList)
                 && Objects.equals(connectionString, that.connectionString)
                 && Objects.equals(skipSnapshotBackfill, that.skipSnapshotBackfill)
-                && Objects.equals(isScanNewlyAddedTableEnabled, that.isScanNewlyAddedTableEnabled);
+                && Objects.equals(isScanNewlyAddedTableEnabled, that.isScanNewlyAddedTableEnabled)
+                && Objects.equals(dbzProperties, that.dbzProperties);
     }
 
     @Override
@@ -258,6 +267,7 @@ public class MongoDBSourceConfig implements SourceConfig {
                 samplesPerChunk,
                 closeIdleReaders,
                 skipSnapshotBackfill,
-                isScanNewlyAddedTableEnabled);
+                isScanNewlyAddedTableEnabled,
+                dbzProperties);
     }
 }

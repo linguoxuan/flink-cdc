@@ -48,11 +48,15 @@ public class MongoDBSourceTestBase {
 
     protected InMemoryReporter metricReporter = InMemoryReporter.createWithRetainedMetrics();
 
+    private static final String DEFAULT_MONGO_VERSION = "5.0";
+
     public static String getMongoVersion() {
         String specifiedMongoVersion = System.getProperty("specifiedMongoVersion");
         if (Objects.isNull(specifiedMongoVersion)) {
-            throw new IllegalArgumentException(
-                    "No MongoDB version specified to run this test. Please use -DspecifiedMongoVersion to pass one.");
+            LOG.info(
+                    "No MongoDB version specified, using default version: {}",
+                    DEFAULT_MONGO_VERSION);
+            return DEFAULT_MONGO_VERSION;
         }
         return specifiedMongoVersion;
     }

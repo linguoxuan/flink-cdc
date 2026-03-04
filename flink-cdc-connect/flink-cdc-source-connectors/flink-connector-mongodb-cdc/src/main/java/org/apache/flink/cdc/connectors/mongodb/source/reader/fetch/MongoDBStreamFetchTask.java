@@ -22,6 +22,7 @@ import org.apache.flink.cdc.connectors.base.source.meta.split.StreamSplit;
 import org.apache.flink.cdc.connectors.base.source.meta.wartermark.WatermarkEvent;
 import org.apache.flink.cdc.connectors.base.source.meta.wartermark.WatermarkKind;
 import org.apache.flink.cdc.connectors.base.source.reader.external.FetchTask;
+import org.apache.flink.cdc.connectors.mongodb.internal.MongoDBEnvelope;
 import org.apache.flink.cdc.connectors.mongodb.source.config.MongoDBSourceConfig;
 import org.apache.flink.cdc.connectors.mongodb.source.offset.ChangeStreamDescriptor;
 import org.apache.flink.cdc.connectors.mongodb.source.offset.ChangeStreamOffset;
@@ -51,7 +52,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.flink.cdc.connectors.mongodb.internal.MongoDBEnvelope.CLUSTER_TIME_FIELD;
 import static org.apache.flink.cdc.connectors.mongodb.internal.MongoDBEnvelope.DOCUMENT_KEY_FIELD;
@@ -87,14 +94,34 @@ public class MongoDBStreamFetchTask implements FetchTask<SourceSplitBase> {
     private boolean supportsStartAtOperationTime = true;
     private boolean supportsStartAfter = true;
 
+    private final Set<OperationType> skippedOperations;
+
     public MongoDBStreamFetchTask(StreamSplit streamSplit) {
         this.streamSplit = streamSplit;
+        this.skippedOperations = new HashSet<>();
     }
 
     @Override
     public void execute(Context context) throws Exception {
         MongoDBFetchTaskContext taskContext = (MongoDBFetchTaskContext) context;
         this.sourceConfig = taskContext.getSourceConfig();
+
+        Properties dbzProps = sourceConfig.getDbzProperties();
+        if (dbzProps != null) {
+            // Convert Properties to Map<String, String> for the shared utility
+            Map<String, String> propsMap = new HashMap<>();
+            for (String key : dbzProps.stringPropertyNames()) {
+                propsMap.put(key, dbzProps.getProperty(key));
+            }
+            skippedOperations.addAll(MongoDBEnvelope.getSkippedOperations(propsMap));
+            if (!skippedOperations.isEmpty()) {
+                LOG.info(
+                        "MongoDB source task will skip operations: {}",
+                        skippedOperations.stream()
+                                .map(OperationType::getValue)
+                                .collect(Collectors.joining(",")));
+            }
+        }
 
         ChangeStreamDescriptor descriptor = taskContext.getChangeStreamDescriptor();
         ChangeEventQueue<DataChangeEvent> queue = taskContext.getQueue();
@@ -159,6 +186,16 @@ public class MongoDBStreamFetchTask implements FetchTask<SourceSplitBase> {
                             BsonDocument resumeToken = changeStreamDocument.getDocument(ID_FIELD);
                             BsonDocument valueDocument =
                                     normalizeChangeStreamDocument(changeStreamDocument);
+
+                            if (skippedOperations.contains(operationType)) {
+                                if (LOG.isDebugEnabled()) {
+                                    LOG.debug(
+                                            "Skip {} data: Value={}",
+                                            operationType.getValue(),
+                                            valueDocument.toJson());
+                                }
+                                break;
+                            }
 
                             LOG.trace("Adding {} to {}", valueDocument, namespace.getFullName());
 
