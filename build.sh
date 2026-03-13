@@ -33,29 +33,28 @@ case "$3" in
     "all")
         CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mysql-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-postgres-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-oracle-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mongodb-cdc,flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-sqlserver-cdc"
         ;;
-    "mysql"|"flink-sql-connector-mysql-cdc")
+    "mysql"|"flink-sql-connector-mysql-cdc"|"mysql-cdc")
         CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mysql-cdc"
         ;;
-    "postgres"|"flink-sql-connector-postgres-cdc")
+    "postgres"|"flink-sql-connector-postgres-cdc"|"postgres-cdc")
         CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-postgres-cdc"
         ;;
-    "oracle"|"flink-sql-connector-oracle-cdc")
+    "oracle"|"flink-sql-connector-oracle-cdc"|"oracle-cdc")
         CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-oracle-cdc"
         ;;
-    "postgres"|"flink-sql-connector-postgres-cdc")
-        CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-postgres-cdc"
-        ;;
-    "mongodb"|"flink-sql-connector-mongodb-cdc")
+    "mongodb"|"flink-sql-connector-mongodb-cdc"|"mongodb-cdc")
         CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-mongodb-cdc"
         ;;
-    "sqlserver"|"flink-sql-connector-sqlserver-cdc")
+    "sqlserver"|"flink-sql-connector-sqlserver-cdc"|"sqlserver-cdc")
         CONNECTOR_NAME="flink-cdc-connect/flink-cdc-source-connectors/flink-sql-connector-sqlserver-cdc"
         ;;
     *)
         echo "Error: Unsupported connector name '$3'"
-        echo "Supported connector names: mysql, flink-sql-connector-mysql-cdc,
-                  oracle, flink-sql-connector-oracle-cdc,
-                  postgres, flink-sql-connector-postgres-cdc,
+        echo "Supported connector names: mysql, flink-sql-connector-mysql-cdc, mysql-cdc,
+                  oracle, flink-sql-connector-oracle-cdc, oracle-cdc,
+                  postgres, flink-sql-connector-postgres-cdc, postgres-cdc,
+                  mongodb, flink-sql-connector-mongodb-cdc, mongodb-cdc,
+                  sqlserver, flink-sql-connector-sqlserver-cdc, sqlserver-cdc,
                   all"
         exit 1
         ;;
