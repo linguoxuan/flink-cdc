@@ -94,6 +94,12 @@ public class StarRocksDataSinkOptions {
                     .defaultValue(150L * 1024 * 1024)
                     .withDescription("Max data bytes of the flush.");
 
+    public static final ConfigOption<Long> SINK_BATCH_MAX_ROWS =
+            ConfigOptions.key("sink.buffer-flush.max-rows")
+                    .longType()
+                    .defaultValue(500000L)
+                    .withDescription("Max row count of the flush.");
+
     public static final ConfigOption<Long> SINK_BATCH_FLUSH_INTERVAL =
             ConfigOptions.key("sink.buffer-flush.interval-ms")
                     .longType()

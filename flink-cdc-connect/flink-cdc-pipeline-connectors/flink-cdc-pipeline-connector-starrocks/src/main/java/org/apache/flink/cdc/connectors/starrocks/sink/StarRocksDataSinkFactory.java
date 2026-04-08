@@ -98,6 +98,10 @@ public class StarRocksDataSinkFactory implements DataSinkFactory {
                 .ifPresent(
                         config -> sinkConfig.set(StarRocksSinkOptions.SINK_BATCH_MAX_SIZE, config));
         cdcConfig
+                .getOptional(StarRocksDataSinkOptions.SINK_BATCH_MAX_ROWS)
+                .ifPresent(
+                        config -> sinkConfig.set(StarRocksSinkOptions.SINK_BATCH_MAX_ROWS, config));
+        cdcConfig
                 .getOptional(StarRocksDataSinkOptions.SINK_BATCH_FLUSH_INTERVAL)
                 .ifPresent(
                         config ->
@@ -175,6 +179,7 @@ public class StarRocksDataSinkFactory implements DataSinkFactory {
         optionalOptions.add(StarRocksDataSinkOptions.SINK_SOCKET_TIMEOUT);
         optionalOptions.add(StarRocksDataSinkOptions.SINK_WAIT_FOR_CONTINUE_TIMEOUT);
         optionalOptions.add(StarRocksDataSinkOptions.SINK_BATCH_MAX_SIZE);
+        optionalOptions.add(StarRocksDataSinkOptions.SINK_BATCH_MAX_ROWS);
         optionalOptions.add(StarRocksDataSinkOptions.SINK_BATCH_FLUSH_INTERVAL);
         optionalOptions.add(StarRocksDataSinkOptions.SINK_SCAN_FREQUENCY);
         optionalOptions.add(StarRocksDataSinkOptions.SINK_IO_THREAD_COUNT);
