@@ -108,7 +108,8 @@ public class CliExecutor {
     // The main class for running application mode
     public static void main(String[] args) throws Exception {
         PipelineDefinitionParser pipelineDefinitionParser = new YamlPipelineDefinitionParser();
-        PipelineDef pipelineDef = pipelineDefinitionParser.parse(args[0], new Configuration());
+        PipelineDef pipelineDef =
+                pipelineDefinitionParser.parse(new Path(args[0]), new Configuration());
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         FlinkPipelineComposer flinkPipelineComposer =
                 FlinkPipelineComposer.ofApplicationCluster(env);
