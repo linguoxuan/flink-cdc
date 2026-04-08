@@ -21,9 +21,9 @@ if [ $# -ne 3 ]; then
     echo "Example: $0 /tmp 1.20 mysql/flink-sql-connector-mysql-cdc/all"
     exit 1
 fi
-ALLOWED_VERSIONS=("1.18" "1.20")
-FLINK_CDC_VERSION="3.4"
-OCEANUS_VERSION="9.25"
+ALLOWED_VERSIONS=("1.20" "2.x")
+FLINK_CDC_VERSION="3.6"
+OCEANUS_VERSION="9.29"
 TARGET_DIR="$1"
 FLINK_VERSION="$2"
 CONNECTOR_NAME=""
@@ -66,11 +66,21 @@ if [[ ! " ${ALLOWED_VERSIONS[*]} " =~ " ${FLINK_VERSION} " ]]; then
   exit 1
 fi
 
+# Map FLINK_VERSION to Maven profile name
+case "${FLINK_VERSION}" in
+    "1.20")
+        MVN_PROFILE="flink1"
+        ;;
+    "2.x")
+        MVN_PROFILE="flink2"
+        ;;
+esac
+
 mkdir -p "${TARGET_DIR}"
 
 echo "=== Starting project build ==="
 echo "=== Building connector: $connector ==="
-mvn clean package -DskipTests -pl "$CONNECTOR_NAME" -am -Pflink-${FLINK_VERSION}
+mvn clean package -DskipTests -pl "$CONNECTOR_NAME" -am -P${MVN_PROFILE}
 if [ $? -ne 0 ]; then
     echo "=== Error: $CONNECTOR_NAME Maven build failed ==="
     exit 1
