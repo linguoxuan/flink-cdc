@@ -131,6 +131,8 @@ public class MySqlStreamingChangeEventSource
     private final MySqlConnection connection;
     private final EventDispatcher<MySqlPartition, TableId> eventDispatcher;
     private final ErrorHandler errorHandler;
+    private final boolean onlyDeserializeCapturedTablesChangelog;
+    private final Predicate<TableId> capturedTableFilter;
 
     @SingleThreadAccess("binlog client thread")
     private Instant eventTimestamp;
@@ -204,6 +206,28 @@ public class MySqlStreamingChangeEventSource
             Clock clock,
             MySqlTaskContext taskContext,
             MySqlStreamingChangeEventSourceMetrics metrics) {
+        this(
+                connectorConfig,
+                connection,
+                dispatcher,
+                errorHandler,
+                clock,
+                taskContext,
+                metrics,
+                false,
+                null);
+    }
+
+    public MySqlStreamingChangeEventSource(
+            MySqlConnectorConfig connectorConfig,
+            MySqlConnection connection,
+            EventDispatcher<MySqlPartition, TableId> dispatcher,
+            ErrorHandler errorHandler,
+            Clock clock,
+            MySqlTaskContext taskContext,
+            MySqlStreamingChangeEventSourceMetrics metrics,
+            boolean onlyDeserializeCapturedTablesChangelog,
+            Predicate<TableId> capturedTableFilter) {
 
         this.taskContext = taskContext;
         this.connectorConfig = connectorConfig;
@@ -212,6 +236,8 @@ public class MySqlStreamingChangeEventSource
         this.eventDispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.metrics = metrics;
+        this.onlyDeserializeCapturedTablesChangelog = onlyDeserializeCapturedTablesChangelog;
+        this.capturedTableFilter = capturedTableFilter;
 
         eventDeserializationFailureHandlingMode =
                 connectorConfig.getEventProcessingFailureHandlingMode();
@@ -319,27 +345,86 @@ public class MySqlStreamingChangeEventSource
         // Add our custom deserializers ...
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
-        eventDeserializer.setEventDataDeserializer(
-                EventType.WRITE_ROWS,
-                new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId));
-        eventDeserializer.setEventDataDeserializer(
-                EventType.UPDATE_ROWS,
-                new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId));
-        eventDeserializer.setEventDataDeserializer(
-                EventType.DELETE_ROWS,
-                new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId));
-        eventDeserializer.setEventDataDeserializer(
-                EventType.EXT_WRITE_ROWS,
-                new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId)
-                        .setMayContainExtraInformation(true));
-        eventDeserializer.setEventDataDeserializer(
-                EventType.EXT_UPDATE_ROWS,
-                new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId)
-                        .setMayContainExtraInformation(true));
-        eventDeserializer.setEventDataDeserializer(
-                EventType.EXT_DELETE_ROWS,
-                new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId)
-                        .setMayContainExtraInformation(true));
+
+        // Create row deserializers, optionally wrapped with filtering for non-captured tables
+        RowDeserializers.WriteRowsDeserializer writeRowsDeserializer =
+                new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId);
+        RowDeserializers.UpdateRowsDeserializer updateRowsDeserializer =
+                new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId);
+        RowDeserializers.DeleteRowsDeserializer deleteRowsDeserializer =
+                new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId);
+        RowDeserializers.WriteRowsDeserializer extWriteRowsDeserializer =
+                (RowDeserializers.WriteRowsDeserializer)
+                        new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId)
+                                .setMayContainExtraInformation(true);
+        RowDeserializers.UpdateRowsDeserializer extUpdateRowsDeserializer =
+                (RowDeserializers.UpdateRowsDeserializer)
+                        new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId)
+                                .setMayContainExtraInformation(true);
+        RowDeserializers.DeleteRowsDeserializer extDeleteRowsDeserializer =
+                (RowDeserializers.DeleteRowsDeserializer)
+                        new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId)
+                                .setMayContainExtraInformation(true);
+
+        if (onlyDeserializeCapturedTablesChangelog && capturedTableFilter != null) {
+            LOGGER.debug(
+                    "Only deserializing changelog events for captured tables is enabled. "
+                            + "Non-captured table row events will skip deserialization.");
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.WRITE_ROWS,
+                    new FilteringRowsEventDataDeserializer<>(
+                            writeRowsDeserializer,
+                            tableMapEventByTableId,
+                            capturedTableFilter,
+                            FilteringRowsEventDataDeserializer.RowEventType.WRITE));
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.UPDATE_ROWS,
+                    new FilteringRowsEventDataDeserializer<>(
+                            updateRowsDeserializer,
+                            tableMapEventByTableId,
+                            capturedTableFilter,
+                            FilteringRowsEventDataDeserializer.RowEventType.UPDATE));
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.DELETE_ROWS,
+                    new FilteringRowsEventDataDeserializer<>(
+                            deleteRowsDeserializer,
+                            tableMapEventByTableId,
+                            capturedTableFilter,
+                            FilteringRowsEventDataDeserializer.RowEventType.DELETE));
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.EXT_WRITE_ROWS,
+                    new FilteringRowsEventDataDeserializer<>(
+                            extWriteRowsDeserializer,
+                            tableMapEventByTableId,
+                            capturedTableFilter,
+                            FilteringRowsEventDataDeserializer.RowEventType.WRITE));
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.EXT_UPDATE_ROWS,
+                    new FilteringRowsEventDataDeserializer<>(
+                            extUpdateRowsDeserializer,
+                            tableMapEventByTableId,
+                            capturedTableFilter,
+                            FilteringRowsEventDataDeserializer.RowEventType.UPDATE));
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.EXT_DELETE_ROWS,
+                    new FilteringRowsEventDataDeserializer<>(
+                            extDeleteRowsDeserializer,
+                            tableMapEventByTableId,
+                            capturedTableFilter,
+                            FilteringRowsEventDataDeserializer.RowEventType.DELETE));
+        } else {
+            eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS, writeRowsDeserializer);
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.UPDATE_ROWS, updateRowsDeserializer);
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.DELETE_ROWS, deleteRowsDeserializer);
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.EXT_WRITE_ROWS, extWriteRowsDeserializer);
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.EXT_UPDATE_ROWS, extUpdateRowsDeserializer);
+            eventDeserializer.setEventDataDeserializer(
+                    EventType.EXT_DELETE_ROWS, extDeleteRowsDeserializer);
+        }
         client.setEventDeserializer(eventDeserializer);
     }
 

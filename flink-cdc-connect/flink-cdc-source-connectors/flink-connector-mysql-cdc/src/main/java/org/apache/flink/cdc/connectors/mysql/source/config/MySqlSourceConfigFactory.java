@@ -78,6 +78,7 @@ public class MySqlSourceConfigFactory implements Serializable {
     private boolean treatTinyInt1AsBoolean = true;
     private boolean useLegacyJsonFormat = true;
     private boolean assignUnboundedChunkFirst = false;
+    private boolean onlyDeserializeCapturedTablesChangelog = false;
 
     public MySqlSourceConfigFactory hostname(String hostname) {
         this.hostname = hostname;
@@ -341,6 +342,16 @@ public class MySqlSourceConfigFactory implements Serializable {
         return this;
     }
 
+    /**
+     * Whether to only deserialize changelog events for captured tables during incremental phase.
+     * Defaults to false.
+     */
+    public MySqlSourceConfigFactory onlyDeserializeCapturedTablesChangelog(
+            boolean onlyDeserializeCapturedTablesChangelog) {
+        this.onlyDeserializeCapturedTablesChangelog = onlyDeserializeCapturedTablesChangelog;
+        return this;
+    }
+
     /** Creates a new {@link MySqlSourceConfig} for the given subtask {@code subtaskId}. */
     public MySqlSourceConfig createConfig(int subtaskId) {
         // hard code server name, because we don't need to distinguish it, docs:
@@ -444,6 +455,7 @@ public class MySqlSourceConfigFactory implements Serializable {
                 parseOnLineSchemaChanges,
                 treatTinyInt1AsBoolean,
                 useLegacyJsonFormat,
-                assignUnboundedChunkFirst);
+                assignUnboundedChunkFirst,
+                onlyDeserializeCapturedTablesChangelog);
     }
 }

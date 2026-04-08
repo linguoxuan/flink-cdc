@@ -69,7 +69,44 @@ public class MySqlBinlogSplitReadTask extends MySqlStreamingChangeEventSource {
             MySqlStreamingChangeEventSourceMetrics metrics,
             MySqlBinlogSplit binlogSplit,
             Predicate<Event> eventFilter) {
-        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, metrics);
+        this(
+                connectorConfig,
+                connection,
+                dispatcher,
+                signalEventDispatcher,
+                errorHandler,
+                clock,
+                taskContext,
+                metrics,
+                binlogSplit,
+                eventFilter,
+                false,
+                null);
+    }
+
+    public MySqlBinlogSplitReadTask(
+            MySqlConnectorConfig connectorConfig,
+            MySqlConnection connection,
+            EventDispatcherImpl<TableId> dispatcher,
+            SignalEventDispatcher signalEventDispatcher,
+            ErrorHandler errorHandler,
+            Clock clock,
+            MySqlTaskContext taskContext,
+            MySqlStreamingChangeEventSourceMetrics metrics,
+            MySqlBinlogSplit binlogSplit,
+            Predicate<Event> eventFilter,
+            boolean onlyDeserializeCapturedTablesChangelog,
+            Predicate<TableId> capturedTableFilter) {
+        super(
+                connectorConfig,
+                connection,
+                dispatcher,
+                errorHandler,
+                clock,
+                taskContext,
+                metrics,
+                onlyDeserializeCapturedTablesChangelog,
+                capturedTableFilter);
         this.binlogSplit = binlogSplit;
         this.eventDispatcher = dispatcher;
         this.errorHandler = errorHandler;

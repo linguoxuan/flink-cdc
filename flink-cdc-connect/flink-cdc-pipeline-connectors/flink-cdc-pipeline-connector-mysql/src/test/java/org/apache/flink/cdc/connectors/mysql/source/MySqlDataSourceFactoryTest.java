@@ -43,6 +43,7 @@ import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOption
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_BINLOG_NEWLY_ADDED_TABLE_ENABLED;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_SNAPSHOT_CHUNK_KEY_COLUMN;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_SNAPSHOT_UNBOUNDED_CHUNK_FIRST_ENABLED;
+import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_ONLY_DESERIALIZE_CAPTURED_TABLES_CHANGELOG_ENABLED;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.TABLES;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.TABLES_EXCLUDE;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.TREAT_TINYINT1_AS_BOOLEAN_ENABLED;
@@ -276,6 +277,27 @@ class MySqlDataSourceFactoryTest extends MySqlSourceTestBase {
         assertThat(dataSource.getSourceConfig().isTreatTinyInt1AsBoolean()).isFalse();
         assertThat(dataSource.getSourceConfig().isParseOnLineSchemaChanges()).isTrue();
         assertThat(dataSource.getSourceConfig().isAssignUnboundedChunkFirst()).isTrue();
+    }
+
+    @Test
+    public void testOnlyDeserializeCapturedTablesChangelogOption() {
+        inventoryDatabase.createAndInitialize();
+        Map<String, String> options = new HashMap<>();
+        options.put(HOSTNAME.key(), MYSQL_CONTAINER.getHost());
+        options.put(PORT.key(), String.valueOf(MYSQL_CONTAINER.getDatabasePort()));
+        options.put(USERNAME.key(), TEST_USER);
+        options.put(PASSWORD.key(), TEST_PASSWORD);
+        options.put(TABLES.key(), inventoryDatabase.getDatabaseName() + ".prod\\.*");
+        options.put(SCAN_ONLY_DESERIALIZE_CAPTURED_TABLES_CHANGELOG_ENABLED.key(), "true");
+
+        Factory.Context context = new MockContext(Configuration.fromMap(options));
+        MySqlDataSourceFactory factory = new MySqlDataSourceFactory();
+        assertThat(factory.optionalOptions())
+                .contains(SCAN_ONLY_DESERIALIZE_CAPTURED_TABLES_CHANGELOG_ENABLED);
+
+        MySqlDataSource dataSource = (MySqlDataSource) factory.createDataSource(context);
+        assertThat(dataSource.getSourceConfig().isOnlyDeserializeCapturedTablesChangelog())
+                .isTrue();
     }
 
     @Test
