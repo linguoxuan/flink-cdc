@@ -131,7 +131,8 @@ public class MySqlSource<T>
                                 sourceReaderMetrics,
                                 sourceConfig.isIncludeSchemaChanges(),
                                 sourceConfig.isIncludeHeartbeatEvents(),
-                                sourceConfig.isIncludeTransactionMetadataEvents()));
+                                sourceConfig.isIncludeTransactionMetadataEvents(),
+                                sourceConfig.getDeserializeParallelism()));
     }
 
     MySqlSource(

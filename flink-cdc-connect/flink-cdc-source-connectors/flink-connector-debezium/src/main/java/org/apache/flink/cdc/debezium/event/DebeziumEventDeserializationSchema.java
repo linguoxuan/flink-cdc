@@ -68,7 +68,6 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,7 +97,7 @@ public abstract class DebeziumEventDeserializationSchema extends SourceRecordEve
             SchemaDataTypeInference schemaDataTypeInference, DebeziumChangelogMode changelogMode) {
         this.schemaDataTypeInference = schemaDataTypeInference;
         this.changelogMode = changelogMode;
-        this.createTableEventCache = new HashMap<>();
+        this.createTableEventCache = new ConcurrentHashMap<>();
     }
 
     @Override

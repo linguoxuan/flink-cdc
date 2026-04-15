@@ -79,6 +79,7 @@ public class MySqlSourceConfigFactory implements Serializable {
     private boolean useLegacyJsonFormat = true;
     private boolean assignUnboundedChunkFirst = false;
     private boolean onlyDeserializeCapturedTablesChangelog = false;
+    private int deserializeParallelism = 1;
 
     public MySqlSourceConfigFactory hostname(String hostname) {
         this.hostname = hostname;
@@ -352,6 +353,28 @@ public class MySqlSourceConfigFactory implements Serializable {
         return this;
     }
 
+    /**
+     * The number of parallel threads used to deserialize binlog events during the incremental
+     * phase. Default is 1 (single-threaded, original behavior). Setting this to a value greater
+     * than 1 enables concurrent deserialization to improve throughput.
+     */
+    public MySqlSourceConfigFactory deserializeParallelism(int deserializeParallelism) {
+        if (deserializeParallelism <= 0) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "The value of 'scan.incremental.deserialize.parallelism' must be positive, but is %d",
+                            deserializeParallelism));
+        }
+        if (deserializeParallelism > 256) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "The value of 'scan.incremental.deserialize.parallelism' must not exceed 256, but is %d",
+                            deserializeParallelism));
+        }
+        this.deserializeParallelism = deserializeParallelism;
+        return this;
+    }
+
     /** Creates a new {@link MySqlSourceConfig} for the given subtask {@code subtaskId}. */
     public MySqlSourceConfig createConfig(int subtaskId) {
         // hard code server name, because we don't need to distinguish it, docs:
@@ -456,6 +479,7 @@ public class MySqlSourceConfigFactory implements Serializable {
                 treatTinyInt1AsBoolean,
                 useLegacyJsonFormat,
                 assignUnboundedChunkFirst,
-                onlyDeserializeCapturedTablesChangelog);
+                onlyDeserializeCapturedTablesChangelog,
+                deserializeParallelism);
     }
 }

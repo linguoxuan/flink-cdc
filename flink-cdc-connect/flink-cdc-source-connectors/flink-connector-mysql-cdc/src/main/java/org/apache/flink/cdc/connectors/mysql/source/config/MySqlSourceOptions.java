@@ -292,4 +292,15 @@ public class MySqlSourceOptions {
                     .defaultValue(true)
                     .withDescription(
                             "Whether to assign the unbounded chunks first during snapshot reading phase. This might help reduce the risk of the TaskManager experiencing an out-of-memory (OOM) error when taking a snapshot of the largest unbounded chunk.");
+
+    @Experimental
+    public static final ConfigOption<Integer> SCAN_INCREMENTAL_DESERIALIZE_PARALLELISM =
+            ConfigOptions.key("scan.incremental.deserialize.parallelism")
+                    .intType()
+                    .defaultValue(1)
+                    .withDescription(
+                            "The number of parallel threads used to deserialize binlog events "
+                                    + "during the incremental phase. Default is 1 (single-threaded, "
+                                    + "original behavior). Setting this to a value greater than 1 "
+                                    + "enables concurrent deserialization to improve throughput.");
 }

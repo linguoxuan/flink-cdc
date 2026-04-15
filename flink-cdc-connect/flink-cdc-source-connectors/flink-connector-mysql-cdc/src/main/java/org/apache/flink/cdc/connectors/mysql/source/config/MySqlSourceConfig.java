@@ -73,6 +73,7 @@ public class MySqlSourceConfig implements Serializable {
     public static boolean useLegacyJsonFormat = true;
     private final boolean assignUnboundedChunkFirst;
     private final boolean onlyDeserializeCapturedTablesChangelog;
+    private final int deserializeParallelism;
 
     // --------------------------------------------------------------------------------------------
     // Debezium Configurations
@@ -114,7 +115,8 @@ public class MySqlSourceConfig implements Serializable {
             boolean treatTinyInt1AsBoolean,
             boolean useLegacyJsonFormat,
             boolean assignUnboundedChunkFirst,
-            boolean onlyDeserializeCapturedTablesChangelog) {
+            boolean onlyDeserializeCapturedTablesChangelog,
+            int deserializeParallelism) {
         this.hostname = checkNotNull(hostname);
         this.port = port;
         this.username = checkNotNull(username);
@@ -161,6 +163,7 @@ public class MySqlSourceConfig implements Serializable {
         this.useLegacyJsonFormat = useLegacyJsonFormat;
         this.assignUnboundedChunkFirst = assignUnboundedChunkFirst;
         this.onlyDeserializeCapturedTablesChangelog = onlyDeserializeCapturedTablesChangelog;
+        this.deserializeParallelism = deserializeParallelism;
     }
 
     public String getHostname() {
@@ -305,5 +308,9 @@ public class MySqlSourceConfig implements Serializable {
 
     public boolean isOnlyDeserializeCapturedTablesChangelog() {
         return onlyDeserializeCapturedTablesChangelog;
+    }
+
+    public int getDeserializeParallelism() {
+        return deserializeParallelism;
     }
 }

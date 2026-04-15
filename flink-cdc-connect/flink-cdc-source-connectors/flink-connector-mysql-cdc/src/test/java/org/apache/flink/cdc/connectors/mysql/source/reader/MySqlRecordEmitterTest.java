@@ -111,7 +111,8 @@ class MySqlRecordEmitterTest {
                         UnregisteredMetricGroups.createUnregisteredOperatorMetricGroup()),
                 false,
                 false,
-                false);
+                false,
+                1);
     }
 
     @Test
@@ -375,7 +376,8 @@ class MySqlRecordEmitterTest {
                         UnregisteredMetricGroups.createUnregisteredOperatorMetricGroup()),
                 false,
                 false,
-                includeTransactionMetadataEvents);
+                includeTransactionMetadataEvents,
+                1);
     }
 
     private SourceRecord createTransactionMetadataEvent(

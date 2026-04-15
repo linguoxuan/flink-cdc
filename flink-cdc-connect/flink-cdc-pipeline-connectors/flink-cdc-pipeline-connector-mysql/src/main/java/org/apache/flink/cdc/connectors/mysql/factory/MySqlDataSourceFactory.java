@@ -77,6 +77,7 @@ import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOption
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.PORT;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_BINLOG_NEWLY_ADDED_TABLE_ENABLED;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_CLOSE_IDLE_READER_ENABLED;
+import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_DESERIALIZE_PARALLELISM;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_SNAPSHOT_BACKFILL_SKIP;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_SNAPSHOT_CHUNK_KEY_COLUMN;
 import static org.apache.flink.cdc.connectors.mysql.source.MySqlDataSourceOptions.SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE;
@@ -170,6 +171,7 @@ public class MySqlDataSourceFactory implements DataSourceFactory {
                 config.get(SCAN_INCREMENTAL_SNAPSHOT_UNBOUNDED_CHUNK_FIRST_ENABLED);
         boolean onlyDeserializeCapturedTablesChangelog =
                 config.get(SCAN_ONLY_DESERIALIZE_CAPTURED_TABLES_CHANGELOG_ENABLED);
+        int deserializeParallelism = config.get(SCAN_INCREMENTAL_DESERIALIZE_PARALLELISM);
 
         validateIntegerOption(SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE, splitSize, 1);
         validateIntegerOption(CHUNK_META_GROUP_SIZE, splitMetaGroupSize, 1);
@@ -225,7 +227,8 @@ public class MySqlDataSourceFactory implements DataSourceFactory {
                         .assignUnboundedChunkFirst(isAssignUnboundedChunkFirst)
                         .skipSnapshotBackfill(skipSnapshotBackfill)
                         .onlyDeserializeCapturedTablesChangelog(
-                                onlyDeserializeCapturedTablesChangelog);
+                                onlyDeserializeCapturedTablesChangelog)
+                        .deserializeParallelism(deserializeParallelism);
 
         List<TableId> tableIds = MySqlSchemaUtils.listTables(configFactory.createConfig(0), null);
 
@@ -364,6 +367,7 @@ public class MySqlDataSourceFactory implements DataSourceFactory {
         options.add(SCAN_INCREMENTAL_SNAPSHOT_UNBOUNDED_CHUNK_FIRST_ENABLED);
         options.add(SCAN_INCREMENTAL_SNAPSHOT_BACKFILL_SKIP);
         options.add(SCAN_ONLY_DESERIALIZE_CAPTURED_TABLES_CHANGELOG_ENABLED);
+        options.add(SCAN_INCREMENTAL_DESERIALIZE_PARALLELISM);
         return options;
     }
 

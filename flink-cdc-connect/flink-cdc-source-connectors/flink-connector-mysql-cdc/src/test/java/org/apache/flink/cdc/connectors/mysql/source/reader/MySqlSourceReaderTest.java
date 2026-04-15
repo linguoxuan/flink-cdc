@@ -571,7 +571,8 @@ class MySqlSourceReaderTest extends MySqlSourceTestBase {
                                 new MySqlSourceReaderMetrics(readerContext.metricGroup()),
                                 configuration.isIncludeSchemaChanges(),
                                 configuration.isIncludeHeartbeatEvents(),
-                                configuration.isIncludeTransactionMetadataEvents());
+                                configuration.isIncludeTransactionMetadataEvents(),
+                                1);
         final MySqlSourceReaderContext mySqlSourceReaderContext =
                 new MySqlSourceReaderContext(readerContext);
         return new MySqlSourceReader<>(
@@ -742,7 +743,8 @@ class MySqlSourceReaderTest extends MySqlSourceTestBase {
                     sourceReaderMetrics,
                     includeSchemaChanges,
                     false,
-                    false);
+                    false,
+                    1);
             this.debeziumDeserializationSchema = debeziumDeserializationSchema;
             this.sourceReaderMetrics = sourceReaderMetrics;
             this.includeSchemaChanges = includeSchemaChanges;

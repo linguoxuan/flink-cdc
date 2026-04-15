@@ -341,4 +341,15 @@ public class MySqlDataSourceOptions {
                                     "Whether to only deserialize changelog events for captured tables during incremental phase. "
                                             + "When set to true, only changelog events for the target tables will be deserialized, "
                                             + "which can speed up binlog reading. Defaults to false.");
+
+    @Experimental
+    public static final ConfigOption<Integer> SCAN_INCREMENTAL_DESERIALIZE_PARALLELISM =
+            ConfigOptions.key("scan.incremental.deserialize.parallelism")
+                    .intType()
+                    .defaultValue(1)
+                    .withDescription(
+                            "The number of parallel threads used to deserialize binlog events "
+                                    + "during the incremental phase. Default is 1 (single-threaded, "
+                                    + "original behavior). Setting this to a value greater than 1 "
+                                    + "enables concurrent deserialization to improve throughput.");
 }

@@ -526,6 +526,18 @@ public class MySqlSourceReader<T>
         return splitState.toMySqlSplit();
     }
 
+    @Override
+    public void close() throws Exception {
+        // Close the record emitter first to shut down the worker pool and drain pending tasks,
+        // before closing the parent's resources (FetcherManager, internal queues, etc.)
+        try {
+            recordEmitter.close();
+        } catch (Exception e) {
+            LOG.warn("Failed to close record emitter.", e);
+        }
+        super.close();
+    }
+
     @VisibleForTesting
     public Map<String, MySqlSnapshotSplit> getFinishedUnackedSplits() {
         return finishedUnackedSplits;

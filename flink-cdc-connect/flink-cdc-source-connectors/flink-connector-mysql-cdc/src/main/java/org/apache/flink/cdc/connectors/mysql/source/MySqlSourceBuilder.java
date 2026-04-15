@@ -313,6 +313,15 @@ public class MySqlSourceBuilder<T> {
     }
 
     /**
+     * The number of parallel threads used to deserialize binlog events during the incremental
+     * phase. Default is 1 (single-threaded, original behavior).
+     */
+    public MySqlSourceBuilder<T> deserializeParallelism(int deserializeParallelism) {
+        this.configFactory.deserializeParallelism(deserializeParallelism);
+        return this;
+    }
+
+    /**
      * Build the {@link MySqlSource}.
      *
      * @return a MySqlParallelSource with the settings made for this builder.
